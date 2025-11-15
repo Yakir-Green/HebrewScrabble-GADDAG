@@ -16,6 +16,8 @@ class GADDAG {
 
   Map<String, String> encodingCache = {};
 
+  int nodeCount = 1;
+
   // Constructor: avoid shadowing field name
   GADDAG([List<String>? initialWords]) {
     if (initialWords != null) {
@@ -61,6 +63,7 @@ class GADDAG {
     for (int i = 0; i < encoding.length; i++) {
       String ch = encoding[i];
       current.children.putIfAbsent(ch, () => GADDAGNode());
+      nodeCount++;
       current = current.children[ch]!;
     }
     current.isEndOfWord = true;

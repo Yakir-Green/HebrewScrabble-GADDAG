@@ -1,4 +1,4 @@
-# Dart Scrabble Solver with GADDAG
+# Dart Scrabble Solver with GADDAG - For the Hebrew Language!
 
 This project is a Dart-based implementation of the core logic for a Scrabble-playing program. It leverages a highly efficient data structure known as a GADDAG to find the optimal move given a board state and a rack of tiles.
 

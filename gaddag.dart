@@ -1,4 +1,6 @@
 import 'dart:collection';
+import 'dart:convert';
+import 'fileManager.dart';
 
 /// A node in the GADDAG data structure.
 class GADDAGNode {
@@ -8,7 +10,21 @@ class GADDAGNode {
   /// A flag indicating if this node represents the end of a valid word path.
   bool isEndOfWord = false;
 
-  
+  /// Default unnamed constructor.
+  GADDAGNode();
+
+  /// Creates a GADDAGNode from a JSON map.
+  GADDAGNode.fromJson(Map<String, dynamic> json)
+      : isEndOfWord = json['e'] as bool;
+
+  /// Converts a GADDAGNode to a JSON map.
+  Map<String, dynamic> toJson(Map<GADDAGNode, int> nodeIds) {
+    final Map<String, int> childIds = {};
+    children.forEach((char, node) {
+      childIds[char] = nodeIds[node]!;
+    });
+    return {'e': isEndOfWord, 'c': childIds};
+  }
 
   /// Adds a child node for a given character.
   GADDAGNode addChild(String char) {
@@ -64,6 +80,64 @@ class GADDAG {
       _addWord(tempRoot, word);
     }
     root = _minimize(tempRoot);
+  }
+
+  /// Constructs a GADDAG from a JSON string.
+  GADDAG.fromJson(String jsonString) {
+    final Map<String, dynamic> data = jsonDecode(jsonString);
+
+    final List<dynamic> nodeList = data['nodes'];
+    final List<GADDAGNode> nodes =
+        nodeList.map((nodeData) => GADDAGNode.fromJson(nodeData)).toList();
+
+    for (int i = 0; i < nodeList.length; i++) {
+      final Map<String, dynamic> nodeData = nodeList[i];
+      final GADDAGNode node = nodes[i];
+      if (nodeData['c'] != null) {
+        (nodeData['c'] as Map<String, dynamic>).forEach((char, childId) {
+          node.children[char] = nodes[childId as int];
+        });
+      }
+    }
+
+    root = nodes[data['rootId'] as int];
+    words = (data['words'] as List<dynamic>).map((e) => e.toString()).toSet();
+    encodingCache = (data['encodingCache'] as Map<String, dynamic>)
+        .map((key, value) => MapEntry(key, value.toString()));
+    nodeCount = nodes.length;
+  }
+
+  /// Serializes the GADDAG to a JSON string.
+  String toJson() {
+    final Map<GADDAGNode, int> nodeIds = {};
+    final List<GADDAGNode> nodeQueue = [];
+    final List<Map<String, dynamic>> serializedNodes = [];
+
+    nodeIds[root] = 0;
+    nodeQueue.add(root);
+    int head = 0;
+
+    while (head < nodeQueue.length) {
+      final currentNode = nodeQueue[head];
+
+      // Ensure all children are in the queue and have an ID before serializing the current node.
+      currentNode.children.forEach((char, childNode) {
+        if (!nodeIds.containsKey(childNode)) {
+          nodeIds[childNode] = nodeQueue.length;
+          nodeQueue.add(childNode);
+        }
+      });
+
+      serializedNodes.add(currentNode.toJson(nodeIds));
+      head++;
+    }
+
+    return jsonEncode({
+      'rootId': nodeIds[root],
+      'nodes': serializedNodes,
+      'words': words.toList(),
+      'encodingCache': encodingCache,
+    });
   }
 
   /// Adds a single word to a temporary, unminimized GADDAG.
@@ -143,4 +217,16 @@ class GADDAG {
     nodeCount++;
     return node;
   }
+}
+
+void main() async
+{
+    // Load words from a file
+  final words = await loadWordsFromFileAsync('Data/HebrewDictionary.txt');
+  var dictionary = GADDAG(words);
+
+  // save the GADDAG to a file
+  final gaddagJson = dictionary.toJson();
+  await writeStringToFileAsync('Data/MinimizedGADDAG.json', gaddagJson);
+  
 }

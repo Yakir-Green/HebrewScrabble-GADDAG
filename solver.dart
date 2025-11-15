@@ -187,8 +187,8 @@ void main() async {
   print("Anchors: ${board.anchors}");
 
   // Load words from a file
-  final words = await loadWordsFromFileAsync('Data/HebrewDictionary.txt');
-  var dictionary = GADDAG(words);
+  final string = await readStringFromFileAsync('Data/MinimizedGADDAG.json');
+  var dictionary = GADDAG.fromJson(string);
   // var dictionary = GADDAG(['שלום', 'תולס', 'מלא', 'מרס', 'תור', 'תול', 'מת', 'כתר', 'שלם', 'לום', 'מלוא', 'סמר', 'ארם']);
 
   print('Time to reach this line: ${stopwatch.elapsedMilliseconds}ms');

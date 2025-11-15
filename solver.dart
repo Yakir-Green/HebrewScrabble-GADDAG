@@ -170,6 +170,9 @@ Solution? findBestSolution(Set<Solution> solutions)
 }
 
 void main() async {
+  final stopwatch = Stopwatch()..start();
+
+
   var board = Board(7);
   board.insertString((2,2), 'מת', false);
   
@@ -186,10 +189,17 @@ void main() async {
   // Load words from a file
   final words = await loadWordsFromFileAsync('Data/HebrewDictionary.txt');
   var dictionary = GADDAG(words);
+  // var dictionary = GADDAG(['שלום', 'תולס', 'מלא', 'מרס', 'תור', 'תול', 'מת', 'כתר', 'שלם', 'לום', 'מלוא', 'סמר', 'ארם']);
+
+  print('Time to reach this line: ${stopwatch.elapsedMilliseconds}ms');
+
+  print('number of nodes in GADDAG: ${dictionary.nodeCount}');
 
   Set<Solution> solutions = assembleAllPossibleSolutions(dictionary, ['ח', 'ת', 'ו', 'ל','ס', 'ר','א','מ','ל','א'], board);
 
-  print(solutions);
+  print('Time to reach this line: ${stopwatch.elapsedMilliseconds}ms');
+  // print(solutions);
+  print('nubmer of solutions found: ${solutions.length}');
 
   Solution? bestSolution = findBestSolution(solutions);
   print("Best solution: $bestSolution");
@@ -199,4 +209,7 @@ void main() async {
     print("Board after inserting solution:");
     board.tiles.forEach(print);
   }
+
+    stopwatch.stop();
+    print('Total time: ${stopwatch.elapsedMilliseconds}ms');
 }

@@ -23,52 +23,76 @@ Map<String, int> letterValues = {
   'ת': 1
 };
 
+class LetterBag {
+  late final List<String> _letters;
+  static final LetterBag _instance = LetterBag._internal();
+
+  factory LetterBag() {
+    return _instance;
+  }
+
+  LetterBag._internal() {
+    _letters = _createInitialBag();
+    _letters.shuffle();
+  }
+
+  List<String> _createInitialBag() {
+    return [
+      'א','א','א','א','א','א','א','א','א',
+      'ב','ב',
+      'ג','ג',
+      'ד','ד','ד','ד',
+      'ה','ה','ה','ה','ה','ה',
+      'ו','ו','ו','ו','ו','ו',
+      'ז',
+      'ח','ח',
+      'ט','ט',
+      'י','י','י','י','י','י','י','י','י',
+      'כ','כ','כ',
+      'ל','ל','ל','ל',
+      'מ','מ','מ',
+      'נ','נ','נ','נ',
+      'ס',
+      'ע','ע','ע','ע',
+      'פ','פ','פ',
+      'צ','צ',
+      'ק',
+      'ר','ר','ר','ר',
+      'ש','ש','ש',
+      'ת','ת','ת','ת','ת','ת'
+    ];
+  }
+
+  List<String> drawLetters(int count) {
+    List<String> drawn = [];
+    for (int i = 0; i < count && _letters.isNotEmpty; i++) {
+      drawn.add(_letters.removeAt(0));
+    }
+    return drawn;
+  }
+
+  bool get isEmpty => _letters.isEmpty;
+
+  int get remainingLetters => _letters.length;
+}
+
 
 class Rack 
 {
-  static List<String> lettersBag = [
-  'א','א','א','א','א','א','א','א','א',
-  'ב','ב',
-  'ג','ג',
-  'ד','ד','ד','ד',
-  'ה','ה','ה','ה','ה','ה',
-  'ו','ו','ו','ו','ו','ו',
-  'ז',
-  'ח','ח',
-  'ט','ט',
-  'י','י','י','י','י','י','י','י','י',
-  'כ','כ','כ',
-  'ל','ל','ל','ל',
-  'מ','מ','מ',
-  'נ','נ','נ','נ',
-  'ס',
-  'ע','ע','ע','ע',
-  'פ','פ','פ',
-  'צ','צ',
-  'ק',
-  'ר','ר','ר','ר',
-  'ש','ש','ש',
-  'ת','ת','ת','ת','ת','ת'
-];
-
   List<String> letters = [];
-  int size;
+  final int size;
+  final LetterBag _letterBag = LetterBag();
 
   Rack(this.size)
   {
-    drawLetters(size);
+    fill();
   }
 
-  void drawLetters(int count)
+  void fill()
   {
-    lettersBag.shuffle();
-
-    for(int i = 0; i < count && i < lettersBag.length; i++)
-    {
-      letters.add(lettersBag[i]);
-      lettersBag.removeAt(i);
+    int lettersToDraw = size - letters.length;
+    if (lettersToDraw > 0) {
+      letters.addAll(_letterBag.drawLetters(lettersToDraw));
     }
-
-
   }
 }

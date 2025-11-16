@@ -66,6 +66,9 @@ class Rack
     for(int i = 0; i < count && i < lettersBag.length; i++)
     {
       letters.add(lettersBag[i]);
+      lettersBag.removeAt(i);
     }
+
+
   }
 }

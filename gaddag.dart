@@ -67,6 +67,7 @@ class GADDAG {
   /// A special character used to denote the "turn" in the word path.
   static const String breakChar = '+';
 
+  /// A cache mapping encodings to their original words.
   Map<String, String> encodingCache = {};
 
   Set<String> words = {};
@@ -223,7 +224,9 @@ void main() async
 {
     // Load words from a file
   final words = await loadWordsFromFileAsync('Data/HebrewDictionary.txt');
+  final stopwatch = Stopwatch()..start();
   var dictionary = GADDAG(words);
+  print('Time to create GADDAG: ${stopwatch.elapsedMilliseconds}ms');
 
   // save the GADDAG to a file
   final gaddagJson = dictionary.toJson();

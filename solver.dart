@@ -1,22 +1,45 @@
 import 'board.dart';
 import 'gaddag.dart';
 import 'fileManager.dart';
+import 'rack.dart';
 
 class Solution {
-  String encoding;
-  (int,int) anchor;
-  int score;
-  bool isHorizontal;
+  final String word;
+  final (int,int) startPos;
+  final List<String> adjacentWords;
+  late final int score;
+  final bool isHorizontal;
 
-  Solution(this.encoding, this.anchor, this.isHorizontal) : score = encoding.length; // Placeholder scoring
+  Solution(this.word, this.startPos, this.isHorizontal, this.adjacentWords)
+  {
+    score = _calculateScore();
+  } 
+
+  int _calculateScore() {
+    int _score = 0;
+
+    // Score for the main word
+    for (int i = 0; i < word.length; i++) {
+      _score += letterValues[word[i]] ?? 0;
+    }
+
+    // Score for adjacent words
+    for (String adjWord in adjacentWords) {
+      for (int i = 0; i < adjWord.length; i++) {
+        _score += letterValues[adjWord[i]] ?? 0;
+      }
+    }
+
+    return _score;
+  }
 
   @override
   String toString() {
-    return 'Solution(encoding: $encoding, anchor: $anchor, score: $score, isHorizontal: $isHorizontal)';
+    return 'Solution(word: $word, startPos: $startPos, score: $score, isHorizontal: $isHorizontal, adjacentWords: $adjacentWords)';
   }
 }
 
-Set<Solution> assembleAllPossibleSolutions(GADDAG dictionary, List<String> rack, Board board)
+Set<Solution> assembleAllPossibleSolutions(GADDAG dictionary, Rack rack, Board board)
 {
   Set<Solution> result = {};
 
@@ -33,14 +56,14 @@ Set<Solution> assembleAllPossibleSolutions(GADDAG dictionary, List<String> rack,
 
     while(board.isTileFilled(board.after(currentPos, isHorizontal)))
     {
-      lettersBefore += board.getTile(board.after(currentPos, isHorizontal));
+      lettersBefore += board.getTile(board.after(currentPos, isHorizontal)).letter;
       currentPos = board.after(currentPos, isHorizontal);
     }
 
     currentPos = pos;
     while(board.isTileFilled(board.before(currentPos, isHorizontal)))
     {
-      lettersAfter += board.getTile(board.before(currentPos, isHorizontal));
+      lettersAfter += board.getTile(board.before(currentPos, isHorizontal)).letter;
       currentPos = board.before(currentPos, isHorizontal);
     }
 
@@ -50,7 +73,7 @@ Set<Solution> assembleAllPossibleSolutions(GADDAG dictionary, List<String> rack,
       return validLetters;
     }
 
-    for(String letter in rack)
+    for(String letter in rack.letters)
     {
       String formedWord = lettersAfter + letter + lettersBefore;
       if(dictionary.words.contains(formedWord))
@@ -70,10 +93,25 @@ Set<Solution> assembleAllPossibleSolutions(GADDAG dictionary, List<String> rack,
   _findAllPossibleWordsForAnchor(String string, GADDAGNode currentNode, bool arrivedDelimiter, (int,int) currentPos, (int, int) anchorPos, bool isHorizontal)
   {
 
+    //*****FOUND A SOLUTION*******/
     if(currentNode.isEndOfWord)
     {
-      result.add(Solution(string, anchorPos, isHorizontal));
+      var (String originalWord, (int,int) startPos) = board.getOriginalWordAndStartPosFromEncoding(
+        dictionary,
+        anchorPos,
+        string,
+        isHorizontal,
+      );
+
+      if(originalWord == 'במאי' && startPos == (2,3))
+      {
+        print('debug');
+      }
+
+      List<String> adjacentWords = board.getAdjacentWords(startPos, originalWord, isHorizontal);
+      result.add(Solution(originalWord, startPos, isHorizontal, adjacentWords));
     }
+    //****************************/
 
     if(board.isTileInBounds(currentPos) == false)
     {
@@ -82,7 +120,7 @@ Set<Solution> assembleAllPossibleSolutions(GADDAG dictionary, List<String> rack,
 
     if(board.isTileFilled(currentPos))
     {
-      String boardLetter = board.getTile(currentPos);
+      String boardLetter = board.getTile(currentPos).letter;
       if(currentNode.children.containsKey(boardLetter))
       {
         if(arrivedDelimiter)
@@ -99,9 +137,9 @@ Set<Solution> assembleAllPossibleSolutions(GADDAG dictionary, List<String> rack,
 
     for(String letter in currentNode.children.keys)
     {
-      if(rack.contains(letter) && _crossCheck(currentPos, !isHorizontal).contains(letter))
+      if(rack.letters.contains(letter) && board.getTile(currentPos).validLetters.contains(letter)) // _crossCheck(currentPos, !isHorizontal).contains(letter))
       {
-        rack.remove(letter);
+        rack.letters.remove(letter);
 
         if(arrivedDelimiter)
         {
@@ -112,7 +150,7 @@ Set<Solution> assembleAllPossibleSolutions(GADDAG dictionary, List<String> rack,
            _findAllPossibleWordsForAnchor(string + letter, currentNode.children[letter]!, arrivedDelimiter, board.before(currentPos, isHorizontal), anchorPos, isHorizontal);
         }
 
-        rack.add(letter);
+        rack.letters.add(letter);
       }
       else if(letter == '+')
       {
@@ -121,31 +159,26 @@ Set<Solution> assembleAllPossibleSolutions(GADDAG dictionary, List<String> rack,
     }
   }
 
-    board.anchors.forEach((anchor) {
-      {
-        _findAllPossibleWordsForAnchor(
-          '',
-          dictionary.root,
-          false,
-          anchor,
-          anchor,
-          true,
-        );
+for (final isHorizontal in [true, false]) {
+    for (int row = 0; row < board.size; row++) {
+      for (int col = 0; col < board.size; col++) {
+        (int, int) pos = (row, col);
+        Set<String> validLetters = _crossCheck(pos, !isHorizontal);
+        board.tiles[row][col].validLetters = validLetters;
       }
-    });
+    }
 
-    board.anchors.forEach((anchor) {
-      {
-        _findAllPossibleWordsForAnchor(
-          '',
-          dictionary.root,
-          false,
-          anchor,
-          anchor,
-          false,
-        );
-      }
-    });
+    for (final anchor in board.anchors) {
+      _findAllPossibleWordsForAnchor(
+        '',
+        dictionary.root,
+        false,
+        anchor,
+        anchor,
+        isHorizontal,
+      );
+    }
+  }
 
   return result;
 }
@@ -182,20 +215,23 @@ void main() async {
 
   board.insertString((3,3), 'כתר',true);
     print("Board after 'כתר':");
-  board.tiles.forEach(print);
+  board.printToLog();
 
   print("Anchors: ${board.anchors}");
 
   // Load words from a file
   final string = await readStringFromFileAsync('Data/MinimizedGADDAG.json');
   var dictionary = GADDAG.fromJson(string);
-  // var dictionary = GADDAG(['שלום', 'תולס', 'מלא', 'מרס', 'תור', 'תול', 'מת', 'כתר', 'שלם', 'לום', 'מלוא', 'סמר', 'ארם']);
 
   print('Time to reach this line: ${stopwatch.elapsedMilliseconds}ms');
 
   print('number of nodes in GADDAG: ${dictionary.nodeCount}');
 
-  Set<Solution> solutions = assembleAllPossibleSolutions(dictionary, ['ח', 'ת', 'ו', 'ל','ס', 'ר','א','מ','ל','א'], board);
+  Rack rack = Rack(7);
+  // rack.letters = ['ב', 'א', 'ר', 'א', 'מ', 'י', 'א'];
+  print('Rack letters: ${rack.letters}');
+
+  Set<Solution> solutions = assembleAllPossibleSolutions(dictionary, rack, board);
 
   print('Time to reach this line: ${stopwatch.elapsedMilliseconds}ms');
   // print(solutions);
@@ -204,10 +240,14 @@ void main() async {
   Solution? bestSolution = findBestSolution(solutions);
   print("Best solution: $bestSolution");
 
+  List<String> result = board.getAdjacentWords((1,0), bestSolution!.word, false);
+  print('adjacent words: $result');
+
   if (bestSolution != null) {
-    board.insertEncodingString(dictionary, bestSolution.anchor, bestSolution.encoding, bestSolution.isHorizontal);
+    // board.insertEncodingString(dictionary, bestSolution.anchor, bestSolution.encoding, bestSolution.isHorizontal);
+    board.insertString(bestSolution.startPos, bestSolution.word, bestSolution.isHorizontal);
     print("Board after inserting solution:");
-    board.tiles.forEach(print);
+    print(board.toString());
   }
 
     stopwatch.stop();

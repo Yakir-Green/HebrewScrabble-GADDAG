@@ -1,23 +1,35 @@
 import 'gaddag.dart';
 
-enum LanguageDirection {
-  RTL(-1),
-  LTR(1);
-  final int value;
-  const LanguageDirection(this.value);
+class Tile 
+{
+  String letter;
+  int bonusMultiplier;
+  Set<String> validLetters = {};
+
+  Tile(this.letter, [this.bonusMultiplier = 1]);
 }
 
 class Board 
 {
   final int size;
-  List<List<String>> tiles = [];
+  List<List<Tile>> tiles = [];
   bool isBoardEmpty = true;
   Set<(int,int)> anchors = {};
-  int isRTL = LanguageDirection.RTL.value;
+
+  List<String> wordsOnBoard = [];
 
   Board(this.size)
   {
-    tiles = List.generate(size, (_) => List.generate(size, (_) => '~'));
+    tiles = List.generate(size, (_) => List.generate(size, (_) => Tile('~')));
+  }
+
+  Board copy()
+  {
+    Board copiedBoard = Board(size);
+    copiedBoard.tiles = tiles.map((row) => row.map((tile) => Tile(tile.letter, tile.bonusMultiplier)).toList()).toList();
+    copiedBoard.isBoardEmpty = isBoardEmpty;
+    copiedBoard.anchors = Set.from(anchors);
+    return copiedBoard;
   }
 
   bool isTileInBounds((int, int) pos)
@@ -45,7 +57,7 @@ class Board
     if(!isTileInBounds(pos)) return false;
     
     var (row, col) = pos;
-    return tiles[row][col] != '~' && tiles[row][col] != '*';
+    return tiles[row][col].letter != '~' && tiles[row][col].letter != '*';
   }
 
   bool isTileEmpty((int, int) pos)
@@ -53,7 +65,7 @@ class Board
     return !isTileFilled(pos);
   }
 
-  String getTile((int, int) pos)
+  Tile getTile((int, int) pos)
   {
     var (row, col) = pos;
     return tiles[row][col];
@@ -61,6 +73,7 @@ class Board
 
   insertString((int, int) pos, String string, bool isHorizontal)
   {
+    wordsOnBoard.add(string);
     if(!isWordInBounds(string, pos, isHorizontal))
     {
       return;
@@ -77,17 +90,17 @@ class Board
     {
       if(isHorizontal)
       {
-        tiles[row][col + (i * isRTL)] = string[i];
+        tiles[row][col - i] = Tile(string[i]);
       }
       else
       {
-        tiles[row + i][col] = string[i];
+        tiles[row + i][col] = Tile(string[i]);
       }
     }
     _updateAnchors(pos, string.length, isHorizontal);
   }
 
-  insertEncodingString(
+  (String originalWord, (int, int) startPos) getOriginalWordAndStartPosFromEncoding(
     GADDAG dictionary,
     (int, int) anchor,
     String encoding,
@@ -106,10 +119,10 @@ class Board
     }
 
     String originalWord = dictionary.encodingCache[encoding] ?? '';
-    if (originalWord.isNotEmpty) {
-      insertString(startPos, originalWord, isHorizontal);
-    }
+    return (originalWord, startPos);
   }
+
+
 
   _updateAnchors((int, int) pos, int length, bool isHorizontal) {
     var (row, col) = pos;
@@ -117,13 +130,8 @@ class Board
     int startRow = row - 1;
     int endRow = isHorizontal ? row + 1 : row + length;
 
-    int startCol = col - 1;
-    int endCol = isHorizontal ? col + length : col + 1;
-
-    if(isHorizontal && isRTL == -1) {
-      startCol = col - length;
-      endCol = col + 1;
-    }
+    int startCol =isHorizontal ? col - length: col - 1;
+    int endCol = isHorizontal ? col + 1 : col + length;
 
     for (int r = startRow; r <= endRow; r++) {
       for (int c = startCol; c <= endCol; c++) {
@@ -177,7 +185,7 @@ class Board
     if(!isTileInBounds(pos) || isTileFilled(pos))
     {
       if (anchors.remove(pos) && isTileInBounds(pos) && !isTileFilled(pos)) {
-        tiles[row][col] = '~';
+        tiles[row][col] = Tile('~');
       }
       return;
     }
@@ -185,23 +193,111 @@ class Board
     if(isTileFilled(up(pos)) || isTileFilled(down(pos)) || isTileFilled(left(pos)) || isTileFilled(right(pos)))
     {
       if (anchors.add(pos)) {
-        tiles[row][col] = '*';
+        tiles[row][col] = Tile('*');
       }
     }
     else
     {
       if (anchors.remove(pos)) {
-        tiles[row][col] = '~';
+        tiles[row][col] = Tile('~');
       }
     }
   }
 
-  Board copy()
+  List<String> getAdjacentWords((int, int) startPos, String word, bool isHorizontal)
   {
-    Board copiedBoard = Board(size);
-    copiedBoard.tiles = tiles.map((row) => List<String>.from(row)).toList();
-    copiedBoard.isBoardEmpty = isBoardEmpty;
-    copiedBoard.anchors = Set.from(anchors);
-    return copiedBoard;
+    List<String> adjacentWords = [];
+    var (row, col) = startPos;
+
+    for(int i = 0; i < word.length; i++)
+    {
+      String adjacentWord = '';
+      if(isHorizontal)
+      {
+        // Check vertical
+        int r = row;
+        // Move up to find the start of the word
+        while(isTileInBounds((r - 1, col)) && isTileFilled((r - 1, col)))
+        {
+          r--;
+        }
+        // Collect the word
+        while(isTileInBounds((r, col)) && (isTileFilled((r, col)) || r == row))
+        {
+          if(r == row)
+          {
+            adjacentWord += word[i];
+          }
+          else
+          {
+          adjacentWord += getTile((r, col)).letter;
+          }
+          r++;
+        }
+      }
+      else
+      {
+        // Check horizontal
+        int c = col;
+        // Move right to find the start of the word
+        while(isTileInBounds((row, c + 1)) && isTileFilled((row, c + 1)))
+        {
+          c++;
+        }
+        // Collect the word
+        while(isTileInBounds((row, c)) && (isTileFilled((row, c)) || c == col))
+        {
+          if(c == col)
+          {
+            adjacentWord += word[i];
+          }
+          else
+          {
+            adjacentWord += getTile((row, c)).letter;
+          }
+          c--;
+        }
+      }
+
+      if(adjacentWord.length > 1)
+      {
+        String formedWord = (adjacentWord).split('').reversed.join();
+        if(wordsOnBoard.contains(formedWord) == false)
+        {
+          adjacentWords.add(formedWord);
+          wordsOnBoard.add(formedWord);
+        }
+      }
+
+      // Move to next position in the main word
+      if(isHorizontal)
+      {
+        col--;
+      }
+      else
+      {
+        row++;
+      }
+    }
+
+    return adjacentWords;
+
+  }
+
+  @override
+  String toString() {
+    String boardString = '';
+    for (var row in tiles) {
+      for (var tile in row) {
+        boardString += tile.letter + ' ';
+      }
+      boardString += '\n';
+    }
+    return boardString;
+  }
+
+  printToLog()
+  {
+    print(toString());
   }
 }

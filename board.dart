@@ -265,7 +265,7 @@ class Board
         if(wordsOnBoard.contains(formedWord) == false)
         {
           adjacentWords.add(formedWord);
-          wordsOnBoard.add(formedWord);
+          // wordsOnBoard.add(formedWord);
         }
       }
 
